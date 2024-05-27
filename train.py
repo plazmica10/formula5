@@ -1,5 +1,5 @@
 #%% Importing Libraries
-from agent import CarModel
+from model import CarModel
 from collections import deque
 import gymnasium as gym
 import cv2 as cv
@@ -28,7 +28,12 @@ env = gym.make('CarRacing-v2',render_mode='human')
 agent = CarModel(epsilon=epsilon)
 
 #%% Training
-for e in range(start_ep, final_ep+1):
+for episode in range(start_ep, final_ep+1):
+    '''
+    Number of consecutive frames that are stacked together to create the input to the model.
+    This is done to give the model some information about the dynamics of the environment, i.e.,
+     how the state is changing over time.
+    '''
     init_state = env.reset()
     init_state = convert_to_grayscale(init_state[0])
     still_frames = 0
@@ -42,7 +47,7 @@ for e in range(start_ep, final_ep+1):
             env.render()
 
         current_state_frame_stack = get_state_frames(state_frame_stack_queue)
-        action = agent.act(current_state_frame_stack)
+        action = agent.move(current_state_frame_stack)
 
         reward = 0
         for _ in range(skip_frames+1):
@@ -68,11 +73,11 @@ for e in range(start_ep, final_ep+1):
         agent.memorize(current_state_frame_stack, action, reward, next_state_frame_stack, done)
         if done or negative_rewards >= 25 or reward_sum < 0 or still_frames > 200: break
         if len(agent.memory) > batch_size:
-            agent.replay(batch_size)
+            agent.train(batch_size)
         time_frame_counter += 1
 
-    if e % update_freq == 0:
+    if episode % update_freq == 0:
         agent.update_target_model()
-    if e % save_freq == 0:
-        agent.save('./trained_models/model{}.h5'.format(e))
+    if episode % save_freq == 0:
+        agent.save('./trained_models/model{}.h5'.format(episode))
 env.close()
