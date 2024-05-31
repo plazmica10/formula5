@@ -1,4 +1,5 @@
 from model import CarModel
+from skimage.metrics import structural_similarity
 from collections import deque
 import gymnasium as gym
 import cv2 as cv
@@ -15,16 +16,24 @@ def get_state_frames(deque):
     # Convert to format that the model expects as input because frame_stack is in the shape of (frame_stack_num, 96, 96)
     return np.transpose(frame_stack, (1, 2, 0))
 
+def compare_images(next_state, init_state):
+    if next_state.shape != init_state.shape:
+        return False
+    total_pixels = np.prod(next_state.shape)
+    equal_pixels = np.sum(next_state == init_state)
+    percentage = (equal_pixels / total_pixels) * 100
+    return percentage >= 97
+
 #%% Parameters and Environment
 # np.random.seed(0)
 env = gym.make('CarRacing-v2',render_mode='human')
-env.reset(seed=10)
+env.reset(seed=0)
 #epsilon is 0 so that all actions are made by the agent
 agent = CarModel(epsilon=0)
-agent.load('./trained_models/model1.h5')
+agent.load('./trained_models/model2.h5')
 
 #%% PLAY THE GAME WITH THE TRAINED MODEL
-init_state = env.reset(seed=10)
+init_state = env.reset(seed=0)
 #init state is a tuple, init_state[0] is the state in format of (96, 96, 3) -> (height, width, color_channels)
 # print(init_state)
 init_state = convert_to_grayscale(init_state[0])
@@ -56,10 +65,13 @@ while True:
 
     next_state = convert_to_grayscale(next_state)
     # print(next_state)
-    # end_time = time.time()
+    end_time = time.time()
     # print(end_time - start_time)
-    # if compare_images(next_state, init_state) and end_time - start_time > 10:
-    #     print("A lap has been completed")
+    if end_time - start_time > 10:
+        score, diff = structural_similarity(next_state, init_state, full=True,data_range=1)
+        
+        if(score > 0.3):
+            print("A lap has been completed, time: ", end_time - start_time)
     state_frame_stack_queue.append(next_state)
 
     if done or total_reward < -100 or still_frames > 100: break

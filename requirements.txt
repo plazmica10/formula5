@@ -4,3 +4,4 @@ gymnasium==0.29.1
 swig==4.2.1
 pygame
 gymnasium[box2d]
+sci-kit-image == 0.23.2
